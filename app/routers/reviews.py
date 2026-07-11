@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
 
+from app.services.sentiment import classify_sentiment
+
 router = APIRouter()
 
 
@@ -32,11 +34,14 @@ def create_review(payload: schemas.ReviewCreate, db: Session = Depends(get_db)):
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
 
+    sentiment = classify_sentiment(payload.text)
+
     review = models.Review(
         property_id=payload.property_id,
         source=payload.source,
         rating=payload.rating,
         text=payload.text,
+        sentiment=sentiment,
     )
     db.add(review)
     db.commit()
