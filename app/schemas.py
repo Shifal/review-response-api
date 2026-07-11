@@ -76,3 +76,21 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class PropertyScoreOut(BaseModel):
+    id: str
+    property_id: str
+    score: float
+    review_count: int
+    computed_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PropertyRankingOut(BaseModel):
+    property_id: str
+    property_name: str
+    score: Optional[float]
+    review_count: int

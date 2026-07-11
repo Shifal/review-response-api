@@ -59,6 +59,7 @@ class Property(Base):
 
     company = relationship("Company", back_populates="properties")  # NEW
     reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")
+    scores = relationship("PropertyScore", back_populates="property", cascade="all, delete-orphan")
 
 
 class Review(Base):
@@ -93,3 +94,15 @@ class ReviewResponse(Base):
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
 
     review = relationship("Review", back_populates="response")
+
+
+class PropertyScore(Base):
+    __tablename__ = "property_scores"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    property_id = Column(UUID(as_uuid=False), ForeignKey("properties.id"), nullable=False)
+    score = Column(Float, nullable=False)
+    review_count = Column(Integer, nullable=False)
+    computed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    property = relationship("Property", back_populates="scores")
