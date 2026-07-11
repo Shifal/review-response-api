@@ -6,6 +6,7 @@ from app.database import get_db
 from app import models, schemas
 
 from app.services.sentiment import classify_sentiment
+from app.deps import get_current_user
 
 router = APIRouter()
 
@@ -13,8 +14,16 @@ router = APIRouter()
 # ---------- Properties ----------
 
 @router.post("/properties", response_model=schemas.PropertyOut)
-def create_property(payload: schemas.PropertyCreate, db: Session = Depends(get_db)):
-    prop = models.Property(name=payload.name, city=payload.city)
+def create_property(
+    payload: schemas.PropertyCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    prop = models.Property(
+        company_id=current_user.company_id,
+        name=payload.name,
+        city=payload.city,
+    )
     db.add(prop)
     db.commit()
     db.refresh(prop)
@@ -22,15 +31,25 @@ def create_property(payload: schemas.PropertyCreate, db: Session = Depends(get_d
 
 
 @router.get("/properties", response_model=List[schemas.PropertyOut])
-def list_properties(db: Session = Depends(get_db)):
-    return db.query(models.Property).all()
+def list_properties(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return db.query(models.Property).filter(models.Property.company_id == current_user.company_id).all()
 
 
 # ---------- Reviews ----------
 
 @router.post("/reviews", response_model=schemas.ReviewOut)
-def create_review(payload: schemas.ReviewCreate, db: Session = Depends(get_db)):
-    prop = db.query(models.Property).filter(models.Property.id == payload.property_id).first()
+def create_review(
+    payload: schemas.ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    prop = db.query(models.Property).filter(
+        models.Property.id == payload.property_id,
+        models.Property.company_id == current_user.company_id,
+    ).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
 
@@ -56,8 +75,11 @@ def list_reviews(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    query = db.query(models.Review)
+    query = db.query(models.Review).join(models.Property).filter(
+        models.Property.company_id == current_user.company_id
+    )
     if property_id:
         query = query.filter(models.Review.property_id == property_id)
     if sentiment:

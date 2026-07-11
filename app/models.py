@@ -25,15 +25,39 @@ class ResponseStatusEnum(str, enum.Enum):
     draft = "draft"
     confirmed = "confirmed"
 
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    users = relationship("User", back_populates="company", cascade="all, delete-orphan")
+    properties = relationship("Property", back_populates="company", cascade="all, delete-orphan")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    company_id = Column(UUID(as_uuid=False), ForeignKey("companies.id"), nullable=False)
+    email = Column(String, nullable=False, unique=True)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    company = relationship("Company", back_populates="users")
+
 
 class Property(Base):
     __tablename__ = "properties"
 
     id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    company_id = Column(UUID(as_uuid=False), ForeignKey("companies.id"), nullable=False)  # NEW
     name = Column(String, nullable=False)
     city = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    company = relationship("Company", back_populates="properties")  # NEW
     reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")
 
 
@@ -42,8 +66,8 @@ class Review(Base):
 
     id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
     property_id = Column(UUID(as_uuid=False), ForeignKey("properties.id"), nullable=False)
-    source = Column(String, nullable=False)  # e.g. "google", "yelp", "manual"
-    rating = Column(Integer, nullable=False)  # 1-5
+    source = Column(String, nullable=False)
+    rating = Column(Integer, nullable=False)
     text = Column(Text, nullable=False)
     sentiment = Column(SqlEnum(SentimentEnum), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

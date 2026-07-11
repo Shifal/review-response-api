@@ -6,3 +6,6 @@ pydantic
 pydantic-settings
 python-dotenv
 google-generativeai
+python-jose[cryptography]
+bcrypt
+bcrypt==4.0.1
