@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from app.database import Base, engine
 from app import models
 from app.routers import reviews
+from app.routers import reviews, responses
 
 app = FastAPI(title="Review Response API")
 
@@ -10,6 +11,7 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
 
 app.include_router(reviews.router, tags=["reviews"])
+app.include_router(responses.router, tags=["responses"])
 
 @app.get("/health")
 def health_check():
