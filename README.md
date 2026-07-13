@@ -113,6 +113,7 @@ Every router depends on `get_current_user` (in `app/deps.py`), which decodes the
 | ORM | SQLAlchemy | Explicit models, relationships, and query control |
 | Auth | JWT (`python-jose`) + `bcrypt` | Stateless auth, standard password hashing |
 | AI | Google Gemini (`gemini-3.5-flash`) via `google-genai` | Free-tier accessible, fast, sufficient for classification and short-form drafting |
+| Scheduling | APScheduler (in-process `BackgroundScheduler`) | Runs nightly score recomputation without needing separate worker infrastructure |
 | Testing | `pytest` + FastAPI `TestClient` | Fast, no external test infra required |
 
 ---
@@ -173,9 +174,13 @@ The current scoring model is intentionally simple and fully explainable:
 score = (average_rating_of_all_reviews / 5) * 100
 ```
 
-Each time `POST /properties/{id}/compute-score` is called, this is recalculated from all reviews currently on the property and stored as a **new row** in `property_scores` — never overwriting a previous score. This means `GET /properties/{id}/score-history` always shows the full trend, and `GET /properties/rankings` can always answer "which of my properties is doing best right now" using only the latest row per property.
+Each time a score is computed, it's recalculated from all reviews currently on the property and stored as a **new row** in `property_scores` — never overwriting a previous score. This means `GET /properties/{id}/score-history` always shows the full trend, and `GET /properties/rankings` can always answer "which of my properties is doing best right now" using only the latest row per property.
 
-This is a deliberately simple v1. See [Future Enhancements](#future-enhancements) for the planned recency-weighted, confidence-adjusted version.
+Scores are computed two ways:
+- **On demand** — `POST /properties/{id}/compute-score`, for a single property immediately
+- **Automatically, every 24 hours** — a background job (`app/scheduler.py`, built with APScheduler) loops through every property across every company and recomputes its score, reusing the exact same `compute_property_score()` function as the manual endpoint. There's a single source of truth for the scoring logic regardless of which path triggers it.
+
+This scoring formula itself is a deliberately simple v1. See [Future Enhancements](#future-enhancements) for the planned recency-weighted, confidence-adjusted version.
 
 ---
 
@@ -302,6 +307,7 @@ review-response-api/
 │   ├── schemas.py                # Pydantic request/response models
 │   ├── config.py                 # Environment-based settings
 │   ├── deps.py                   # get_current_user auth dependency
+│   ├── scheduler.py               # APScheduler: nightly automated score recomputation
 │   ├── routers/
 │   │   ├── auth.py               # signup, login
 │   │   ├── reviews.py            # properties + reviews CRUD
@@ -331,6 +337,5 @@ Deliberately scoped out of v1 to keep the build focused, but worth noting as pla
 
 - **Recency-weighted, confidence-adjusted scoring** — weight recent reviews more heavily via exponential decay, and pull scores from low-volume properties toward a neutral midpoint until enough reviews accumulate to be statistically meaningful.
 - **Idempotent external ingestion** — a `source_review_id` + unique constraint so re-pulling from an external review platform never creates duplicate rows.
-- **Scheduled nightly score recomputation** — currently triggered manually via `POST /compute-score`; a background scheduler would run this automatically for every property each night.
 - **Rate limiting on AI endpoints** — protect the Gemini free-tier quota from being exhausted by rapid repeated calls.
 - **Bulk review import** — CSV/JSON batch ingestion endpoint for onboarding a property's historical review backlog in one call.

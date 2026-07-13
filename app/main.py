@@ -5,6 +5,7 @@ from app import models
 from app.routers import reviews
 from app.routers import reviews, responses, auth, scores
 from app.scheduler import start_scheduler
+from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,6 +13,14 @@ logging.basicConfig(
 )
 
 app = FastAPI(title="Review Response API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 def on_startup():
