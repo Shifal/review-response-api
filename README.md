@@ -4,6 +4,10 @@ A backend service for **multifamily property reputation management** — ingesti
 
 This project is modeled on the real-world problem faced by property management companies: reviews arrive constantly across multiple platforms, someone has to read every one, decide how to respond, and track whether the property's reputation is trending up or down. This API is a backend-only implementation of that workflow.
 
+🔗 **Live demo:** [https://review-response-api.onrender.com/docs](https://review-response-api.onrender.com/docs)
+
+> Hosted on Render's free tier — the service spins down after periods of inactivity, so the first request may take 30-60 seconds to respond while it wakes up. Subsequent requests are fast.
+
 ---
 
 ## Table of Contents
