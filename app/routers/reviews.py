@@ -53,11 +53,21 @@ def create_review(
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
 
+    # Idempotency check: if this external review was already ingested, return it as-is
+    if payload.source_review_id:
+        existing = db.query(models.Review).filter(
+            models.Review.source == payload.source,
+            models.Review.source_review_id == payload.source_review_id,
+        ).first()
+        if existing:
+            return existing
+
     sentiment = classify_sentiment(payload.text)
 
     review = models.Review(
         property_id=payload.property_id,
         source=payload.source,
+        source_review_id=payload.source_review_id,
         rating=payload.rating,
         text=payload.text,
         sentiment=sentiment,

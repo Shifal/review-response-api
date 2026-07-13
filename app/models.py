@@ -3,7 +3,7 @@ import enum
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Column, String, Text, Integer, Float, DateTime, ForeignKey, Enum as SqlEnum
+    Column, String, Text, Integer, Float, DateTime, ForeignKey, Enum as SqlEnum, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -68,6 +68,7 @@ class Review(Base):
     id = Column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
     property_id = Column(UUID(as_uuid=False), ForeignKey("properties.id"), nullable=False)
     source = Column(String, nullable=False)
+    source_review_id = Column(String, nullable=True)
     rating = Column(Integer, nullable=False)
     text = Column(Text, nullable=False)
     sentiment = Column(SqlEnum(SentimentEnum), nullable=True)
@@ -81,6 +82,9 @@ class Review(Base):
         cascade="all, delete-orphan"
     )
 
+    __table_args__ = (
+        UniqueConstraint("source", "source_review_id", name="uq_source_review"),
+    )
 
 class ReviewResponse(Base):
     __tablename__ = "review_responses"

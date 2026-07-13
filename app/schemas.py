@@ -26,6 +26,7 @@ class PropertyOut(BaseModel):
 class ReviewCreate(BaseModel):
     property_id: str
     source: str = Field(..., examples=["google", "yelp", "manual"])
+    source_review_id: Optional[str] = None
     rating: int = Field(..., ge=1, le=5)
     text: str
 
@@ -34,6 +35,7 @@ class ReviewOut(BaseModel):
     id: str
     property_id: str
     source: str
+    source_review_id: Optional[str]
     rating: int
     text: str
     sentiment: Optional[SentimentEnum]
