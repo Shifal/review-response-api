@@ -137,7 +137,7 @@ Review (1) ──< (1) ReviewResponse
 | `companies` | `id`, `name` | The tenant. Every property and user belongs to exactly one. |
 | `users` | `id`, `company_id`, `email` (unique), `hashed_password` | Auth identity. |
 | `properties` | `id`, `company_id`, `name`, `city` | A single apartment community. |
-| `reviews` | `id`, `property_id`, `source`, `rating` (1–5), `text`, `sentiment` (nullable until classified) | Ingested feedback. |
+| `reviews` | `id`, `property_id`, `source`, `source_review_id` (nullable), `rating` (1–5), `text`, `sentiment` (nullable until classified) | Ingested feedback. `(source, source_review_id)` has a unique constraint, enforced at the database level, so re-ingesting the same external review (e.g. from a nightly pull) never creates a duplicate — the endpoint returns the existing record instead. Manually-entered reviews simply omit `source_review_id`. |
 | `review_responses` | `id`, `review_id` (unique — one response per review), `draft_text`, `final_text` (nullable), `status` (`draft`/`confirmed`), `confirmed_at` | The draft→confirm audit trail. |
 | `property_scores` | `id`, `property_id`, `score`, `review_count`, `computed_at` | One row per computation — history is preserved, never overwritten. |
 
@@ -295,6 +295,7 @@ Current coverage:
 - The one-response-per-review and no-edit-after-confirm guarantees
 - Multi-tenant data isolation between two separate companies
 - Rejection of unauthenticated requests
+- Idempotent ingestion — re-submitting a review with the same `(source, source_review_id)` returns the existing record rather than creating a duplicate
 
 > Note: tests call the live Gemini API for sentiment/drafting, so a full run takes roughly 1-2 minutes and requires a valid `GEMINI_API_KEY`.
 
@@ -326,7 +327,8 @@ review-response-api/
 │   ├── conftest.py               # shared fixtures (client, auth, sample data)
 │   ├── test_sentiment.py
 │   ├── test_response_flow.py
-│   └── test_multitenancy.py
+│   ├── test_multitenancy.py
+│   └── test_idempotency.py
 ├── pytest.ini
 ├── requirements.txt
 ├── .env.example
@@ -340,6 +342,5 @@ review-response-api/
 Deliberately scoped out of v1 to keep the build focused, but worth noting as planned next steps:
 
 - **Recency-weighted, confidence-adjusted scoring** — weight recent reviews more heavily via exponential decay, and pull scores from low-volume properties toward a neutral midpoint until enough reviews accumulate to be statistically meaningful.
-- **Idempotent external ingestion** — a `source_review_id` + unique constraint so re-pulling from an external review platform never creates duplicate rows.
 - **Rate limiting on AI endpoints** — protect the Gemini free-tier quota from being exhausted by rapid repeated calls.
 - **Bulk review import** — CSV/JSON batch ingestion endpoint for onboarding a property's historical review backlog in one call.
